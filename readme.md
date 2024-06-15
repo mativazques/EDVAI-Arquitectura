@@ -160,8 +160,4 @@ resource "google_cloud_composer_environment" "etl" {
 
 La arquitectura se plantea de la siguiente manera 
 
-![img\arq.png](img\arq.png)
-
-
-
-
+![img/arq.png](img/arq.png)
