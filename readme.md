@@ -2,9 +2,9 @@
 
 Te acaban de contratar en una empresa de la industria minera como Data Engineer/Data Architect para delinear su arquitectura y sugerir qué herramientas deberían utilizar para ingestar la data, procesar la información, almacenarla en un datawarehouse, orquestar y realizar Dashboards que ayuden a la toma de decisiones basadas en datos.
 
-Luego de realizar algunas reuniones con el team de analítica de la empresa pudimos relevar:
+Luego de realizar algunas reuniones con el team de analítica de la empresa pudimos relevar las siguientes fuentes de datos:
 
-- **Sistema ERP:** SAP con una base de datos Oracle
+- **Sistema ERP:** SAP con una base de datos Oracle.
 - **Sistema de Producción:** App desarrollada "in house" con una base de datos Postgres.
 - **Fuentes externas:** un proveedor que realiza algunas mediciones de la calidad de las rocas le deja todos sus análisis en un bucket de AWS S3 con archivos Avro.
 - **Mediciones en tiempo real:** Utilizan +100 sensores de mediciones de vibración por toda la mina para detectar movimiento del suelo y se podrían utilizar para predecir posibles derrumbes.
@@ -65,7 +65,7 @@ En la capa de Streaming se utilizará el enfoque **ELT (Extract, Load, Transform
 
 **Capa de Batch:**
 
-En la capa de Batch se utilizará ELT para ingerir datos del **sistema ERP**, **sistemas de producción** y **fuentes externas** y almacenarlos en un **Data Lake**. Este Data Lake servirá como repositorio centralizado de datos sin procesar, permitiendo su posterior utilización para:
+En la capa de Batch se utilizará ETL para ingerir datos del **sistema ERP**, **sistemas de producción** y **fuentes externas** y almacenarlos en un **Data Lake**. Este Data Lake servirá como repositorio centralizado de datos sin procesar, permitiendo su posterior utilización para:
 
 * **Modelos de Machine Learning (ML) e Inteligencia Artificial (AI):** Los datos sin procesar en el Data Lake pueden ser utilizados para entrenar y desarrollar modelos de ML y AI que aporten valor a la organización.
 
@@ -75,27 +75,28 @@ En la capa de Batch se utilizará ELT para ingerir datos del **sistema ERP**, **
 
 **3. ¿Qué herramienta/s utilizarían para ETL/ELT?**
 
-* **Capa de Streaming:** Dataflow.
-* **Capa de Batch:** PySpark en un clúster de Dataproc.
+* **Capa de Streaming:** Apache Beam en Dataflow.
+* **Capa de Batch:** Apache Beam en Dataflow.
 
-**Orquestación:** Composer
+**Orquestación:** Apache Airflow en Composer. 
 
 **4. ¿Qué herramienta/s utilizarían para ingestar estos datos?**
 
 * **Capa de Streaming:** Pub/Sub.
-* **Capa de Batch:**
-    * Dataproc con Sqoop para la ingesta de bases de datos del ERP.
-    * Dataproc con Sqoop para la ingesta de bases de datos de los sistemas de producción.
-    * Gsutil para la ingesta desde AWS S3.
+* **Capa de Batch:** Operadores de Airflow en Composer: 
+  * PostgresToGCSOperator: para los datos provenientes del sistema de producción. 
+  * OracleToGCSOperator: para los datos provenientes de SAP. 
+  * S3ToGCSOperator: para las fuentes externas adicionales. 
 
 **5. ¿Qué herramienta/s utilizarían para almacenar estos datos?**
 
+* Staging: Google Cloud Storage.
 * Data Lake: Google Cloud Storage. 
-* Data Warehouse: BigQuery
+* Data Warehouse: BigQuery.
 
 **6. ¿Cómo guardarán la información, OLTP o OLAP?**
 
-**OLAP (On-Line Analytical Processing)** será la forma de almacenar la información de manera desnormalizada, ya que se utilizará para la inteligencia empresarial y la toma de decisiones. 
+**OLAP (On-Line Analytical Processing)** será la forma de almacenar la información de manera desnormalizada y en distintas tablas, ya que se utilizará para la inteligencia empresarial y la toma de decisiones. 
 
 **7. ¿Qué herramienta/s utilizarían para Data Governance?**
 
@@ -103,7 +104,7 @@ Google Cloud Data Plex.
 
 **8. ¿Data Warehouse, Data Lake o Lake House?**
 
-Lake House. En primera se almacenan los datos desde las distintas fuentes en Google Cloud Storage, luego en Dataproc se realizan las transformaciones y finalmente se almacena la información en BigQuery. 
+Lake House. Se almacenarán los datos en crudo provenientes de la capa de Streaming y de Batch en un bucket de Google Cloud Storage, este será el Data Lake. Como Data Warehouse se utilizará Big Query para almacenar los datos luego de las tranformaciones. 
 
 **9. ¿Qué tipo de información gestionarán, estructurada, semi estructurada, no estructurada?**
 
@@ -116,45 +117,6 @@ Se gestionará:
 **10. ¿Con qué herramienta podrían desplegar toda la infraestructura de datos?**
 
 Se puede despelagar toda la infraestructura de datos con Terraform, Terraform es una herramienta de infraestructura como código (IaC), que permite definir, provisionar y gestionar la infraestructura de forma declarativa. 
-
-Un ejemplo de como se podría realizar la estructura ETL con Terraform: 
-
-```
-resource "google_storage_bucket" "data_lake" {
-  name     = "my-data-lake"
-  location = "US"
-}
-
-resource "google_pubsub_topic" "iot_data" {
-  name = "iot-data-topic"
-}
-
-resource "google_cloud_dataproc_cluster" "data_processing" {
-  name     = "data-processing-cluster"
-  zone     = "us-central1-a"
-  master_machine_type = "n1-standard-4"
-  worker_machine_type = "n1-standard-4"
-  num_workers = 2
-}
-
-resource "google_cloud_dataflow_pipeline" "data_ingestion" {
-  name = "data-ingestion-pipeline"
-  template {
-    gcs_bucket = google_storage_bucket.data_lake.name
-    pubsub_topic = google_pubsub_topic.iot_data.name
-  }
-}
-
-resource "google_bigquery_dataset" "analytics" {
-  name = "analytics-dataset"
-}
-
-resource "google_cloud_composer_environment" "etl" {
-  name = "etl-environment"
-  zone = "us-central1-a"
-  dag_folder = "dags"
-}
-```
 
 # Representación de la arquitectura 
 
